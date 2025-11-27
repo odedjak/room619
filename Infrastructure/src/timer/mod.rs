@@ -1,9 +1,9 @@
 //! Timer implementations
-//! 
+//!
 //! Provides timing primitives for different platforms.
 
-use std::time::{Duration, Instant};
 use crate::platform::PlatformError;
+use std::time::{Duration, Instant};
 
 /// Timer trait
 pub trait Timer {
@@ -14,15 +14,14 @@ pub trait Timer {
 }
 
 /// Desktop timer implementation
+#[derive(Default)]
 pub struct DesktopTimer {
     start_time: Option<Instant>,
 }
 
 impl DesktopTimer {
     pub fn new() -> Self {
-        DesktopTimer {
-            start_time: None,
-        }
+        DesktopTimer { start_time: None }
     }
 }
 

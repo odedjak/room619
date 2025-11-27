@@ -3,6 +3,7 @@
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "rust-lang.rust-analyzer"
     },
+    "rust-analyzer.checkOnSave": true,
     "rust-analyzer.checkOnSave.command": "clippy",
     "files.exclude": {
         "**/target": true,

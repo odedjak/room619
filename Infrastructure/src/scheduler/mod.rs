@@ -30,6 +30,12 @@ impl DefaultScheduler {
     }
 }
 
+impl Default for DefaultScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Scheduler for DefaultScheduler {
     fn add_task(&mut self, task: Task) -> Result<(), PlatformError> {
         self.tasks.push(task);
