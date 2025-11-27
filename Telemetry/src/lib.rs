@@ -267,3 +267,78 @@ mod sink_tests {
         assert_eq!(records.len(), 1);
     }
 }
+
+// ============================================================================
+// Protocol implementations (feature-gated)
+// ============================================================================
+
+#[cfg(feature = "mqtt")]
+pub mod mqtt {
+    //! MQTT transport for telemetry data.
+    //!
+    //! **Why feature-gated?** Not all deployments need MQTT; gating reduces
+    //! binary size and avoids pulling in heavy dependencies.
+    //! Enable with `features = ["mqtt"]` in Cargo.toml.
+
+    use super::{TelemetrySink, TelemetryResult, TelemetryError};
+
+    /// MQTT sink stub. A real implementation would:
+    /// - Connect to an MQTT broker (mosquitto, AWS IoT, etc.)
+    /// - Publish messages to broker topics
+    /// - Handle reconnection and QoS
+    pub struct MqttSink {
+        /// Placeholder for MQTT client (would be paho_mqtt::AsyncClient, etc.)
+        pub broker_url: String,
+    }
+
+    impl MqttSink {
+        /// Create a new MQTT sink pointing to a broker.
+        pub fn new(broker_url: impl Into<String>) -> Self {
+            Self { broker_url: broker_url.into() }
+        }
+    }
+
+    impl TelemetrySink for MqttSink {
+        fn send(&self, topic: &str, payload: &[u8]) -> TelemetryResult<()> {
+            // TODO: Implement MQTT publish
+            // For now, this is a stub that logs intent.
+            log::debug!("MQTT: would publish to {} @ {}", topic, self.broker_url);
+            Ok(())
+        }
+    }
+}
+
+#[cfg(feature = "grpc")]
+pub mod grpc {
+    //! gRPC transport for telemetry data.
+    //!
+    //! **Why feature-gated?** gRPC adds protobuf/networking complexity;
+    //! only enable if your deployment uses gRPC for telemetry.
+
+    use super::{TelemetrySink, TelemetryResult, TelemetryError};
+
+    /// gRPC sink stub. A real implementation would:
+    /// - Connect to a gRPC service
+    /// - Send telemetry as gRPC messages
+    /// - Handle service availability and retries
+    pub struct GrpcSink {
+        /// Placeholder for gRPC client endpoint
+        pub endpoint: String,
+    }
+
+    impl GrpcSink {
+        /// Create a new gRPC sink pointing to a service endpoint.
+        pub fn new(endpoint: impl Into<String>) -> Self {
+            Self { endpoint: endpoint.into() }
+        }
+    }
+
+    impl TelemetrySink for GrpcSink {
+        fn send(&self, topic: &str, payload: &[u8]) -> TelemetryResult<()> {
+            // TODO: Implement gRPC send
+            // For now, this is a stub that logs intent.
+            log::debug!("gRPC: would send to {} @ {}", topic, self.endpoint);
+            Ok(())
+        }
+    }
+}

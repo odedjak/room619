@@ -1,5 +1,5 @@
 [workspace]
-members = ["Infrastructure"]
+members = ["Infrastructure","Telemetry"]
 resolver = "2"
 
 [workspace.package]
