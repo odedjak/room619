@@ -1,5 +1,5 @@
 //! Platform Abstraction Layer
-//! 
+//!
 //! Provides trait-based abstractions for platform-specific implementations.
 
 pub mod platform;

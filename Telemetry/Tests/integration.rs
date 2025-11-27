@@ -6,7 +6,7 @@
 //! - Error propagation
 
 use std::sync::Arc;
-use telemetry::{TelemetryClient, TelemetryMessage, TelemetrySink, InMemorySink};
+use telemetry::{InMemorySink, TelemetryClient, TelemetryMessage, TelemetrySink};
 
 #[test]
 fn integration_full_message_flow() {
@@ -82,7 +82,9 @@ fn integration_binary_and_json_coexist() {
 
     // Send binary data
     let binary_data = b"\x00\x01\x02\x03";
-    client.send_binary("data/binary", binary_data).expect("send binary");
+    client
+        .send_binary("data/binary", binary_data)
+        .expect("send binary");
 
     // Verify both are recorded
     let records = records_arc.lock().expect("lock");

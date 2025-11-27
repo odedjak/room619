@@ -25,7 +25,9 @@ pub struct TelemetryError {
 
 impl TelemetryError {
     pub fn new(message: impl Into<String>) -> Self {
-        Self { message: message.into() }
+        Self {
+            message: message.into(),
+        }
     }
 }
 
@@ -158,7 +160,9 @@ pub struct InMemorySink {
 impl InMemorySink {
     /// Create a new in-memory sink with no records.
     pub fn new() -> Self {
-        Self { records: Arc::new(Mutex::new(Vec::new())) }
+        Self {
+            records: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
     /// Get a cloneable `Arc` to the internal storage.
@@ -177,7 +181,9 @@ impl Default for InMemorySink {
 
 impl TelemetrySink for InMemorySink {
     fn send(&self, topic: &str, payload: &[u8]) -> TelemetryResult<()> {
-        let mut lock = self.records.lock()
+        let mut lock = self
+            .records
+            .lock()
             .map_err(|e| TelemetryError::new(format!("lock poisoned: {}", e)))?;
         lock.push((topic.to_string(), payload.to_vec()));
         Ok(())
@@ -216,7 +222,7 @@ mod sink_tests {
         assert_eq!(parsed.topic, "svc/status");
         assert_eq!(parsed.payload, payload);
     }
-    
+
     #[test]
     fn send_binary_via_client() {
         let sink = InMemorySink::new();
@@ -224,7 +230,9 @@ mod sink_tests {
         let client = TelemetryClient::new(Arc::new(sink));
 
         let data = [1u8, 2, 3, 4];
-        client.send_binary("binary/topic", &data).expect("send binary");
+        client
+            .send_binary("binary/topic", &data)
+            .expect("send binary");
 
         let records = records_arc.lock().expect("lock");
         assert_eq!(records.len(), 1);
@@ -247,7 +255,7 @@ mod sink_tests {
         let client = TelemetryClient::new(sink);
         let payload = serde_json::json!({ "test": true });
         let msg = TelemetryMessage::new("test/topic", payload);
-        
+
         let result = client.send_message(&msg);
         assert!(result.is_ok());
     }
@@ -278,7 +286,7 @@ pub mod mqtt {
     //! binary size and avoids pulling in heavy dependencies.
     //! Enable with `features = ["mqtt"]` in Cargo.toml.
 
-    use super::{TelemetrySink, TelemetryResult};
+    use super::{TelemetryResult, TelemetrySink};
 
     /// MQTT sink stub. A real implementation would:
     /// - Connect to an MQTT broker (mosquitto, AWS IoT, etc.)
@@ -292,7 +300,9 @@ pub mod mqtt {
     impl MqttSink {
         /// Create a new MQTT sink pointing to a broker.
         pub fn new(broker_url: impl Into<String>) -> Self {
-            Self { broker_url: broker_url.into() }
+            Self {
+                broker_url: broker_url.into(),
+            }
         }
     }
 
@@ -313,7 +323,7 @@ pub mod grpc {
     //! **Why feature-gated?** gRPC adds protobuf/networking complexity;
     //! only enable if your deployment uses gRPC for telemetry.
 
-    use super::{TelemetrySink, TelemetryResult};
+    use super::{TelemetryResult, TelemetrySink};
 
     /// gRPC sink stub. A real implementation would:
     /// - Connect to a gRPC service
@@ -327,7 +337,9 @@ pub mod grpc {
     impl GrpcSink {
         /// Create a new gRPC sink pointing to a service endpoint.
         pub fn new(endpoint: impl Into<String>) -> Self {
-            Self { endpoint: endpoint.into() }
+            Self {
+                endpoint: endpoint.into(),
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 //! Platform Abstraction Traits
-//! 
+//!
 //! Defines the core traits that all platform implementations must provide.
 
 use std::time::Duration;

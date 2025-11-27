@@ -1,5 +1,5 @@
 //! Scheduler implementations
-//! 
+//!
 //! Provides scheduling primitives for different platforms.
 
 use crate::platform::PlatformError;
@@ -26,9 +26,7 @@ pub struct DefaultScheduler {
 
 impl DefaultScheduler {
     pub fn new() -> Self {
-        DefaultScheduler {
-            tasks: Vec::new(),
-        }
+        DefaultScheduler { tasks: Vec::new() }
     }
 }
 
