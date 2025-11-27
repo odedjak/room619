@@ -3,7 +3,6 @@
 //! This is the main entry point for the framework.
 
 use tracing::{info, Level};
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
