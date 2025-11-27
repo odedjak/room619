@@ -24,6 +24,12 @@ impl DesktopTimer {
     }
 }
 
+impl Default for DesktopTimer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Timer for DesktopTimer {
     fn start(&mut self) -> Result<(), PlatformError> {
         self.start_time = Some(Instant::now());
