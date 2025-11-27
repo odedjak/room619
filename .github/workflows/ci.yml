@@ -4,11 +4,47 @@ on:
   push:
     branches: [ '**' ]
   pull_request:
-    branches: [ '**' ]
+    branches: [ master, main, develop ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  MIRIFLAGS: -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check
 
 jobs:
-  build-and-test:
-    name: Build and test all Rust crates
+  check:
+    name: Cargo check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --all-targets
+
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  crate-discovery:
+    name: Build & Test All Crates
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,7 +62,6 @@ jobs:
         run: |
           set -euo pipefail
           echo "Finding Cargo.toml files..."
-          # Find all Cargo.toml files tracked in git
           crates=( $(git ls-files -- "*/Cargo.toml" | sed 's#/Cargo.toml##') )
           if [ ${#crates[@]} -eq 0 ]; then
             echo "No Rust crates found. Nothing to build."
@@ -42,3 +77,26 @@ jobs:
       - name: Telemetry CI note
         run: |
           echo "Telemetry crate tests are included in the discovery step above."
+
+  build:
+    name: Cross-Platform Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        rust: [ stable ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@${{ matrix.rust }}
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --verbose --all-features
+      - run: cargo build --release --verbose --no-default-features
+
+  integration-test:
+    name: Integration Tests (Telemetry)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --test '*' --verbose --all-features

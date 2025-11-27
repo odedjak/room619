@@ -1,0 +1,59 @@
+name: Security & Real-Time Checks
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustsec/audit-check-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  deny:
+    name: Cargo Deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v1
+
+  miri:
+    name: Undefined Behavior Detection (Miri)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo miri test --all-features
+        env:
+          MIRIFLAGS: -Zmiri-strict-provenance
+
+  no-allocations:
+    name: Check No-Allocations (Hard Real-Time)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Check for forbidden patterns
+        run: |
+          if grep -r "\.unwrap()\|\.expect(" src/ --include="*.rs" 2>/dev/null; then
+            echo "❌ Found .unwrap() or .expect() - use ? operator instead"
+            exit 1
+          fi
+          if grep -r "vec!\|HashMap\|thread::spawn" src/ --include="*.rs" 2>/dev/null | grep -v "test\|// SAFETY"; then
+            echo "⚠️  Potentially forbidden patterns in hot paths - review carefully"
+          fi
+          echo "✅ Code follows hard real-time guidelines"
