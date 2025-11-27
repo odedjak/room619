@@ -1,74 +1,83 @@
-# room619 - Modular Real-Time Embedded Framework for Autonomous Systems
+# room619 - Modular Micro-Services Framework in Rust
 
-A modern, safe, and performant embedded framework built in **Rust** for autonomous systems. This framework replaces traditional C/C++ embedded development with Rust's memory safety, zero-cost abstractions, and strong concurrency model.
+A modern, safe, and performant micro-services framework built in **Rust**. This framework provides a robust foundation for building scalable, distributed systems with Rust's memory safety, zero-cost abstractions, and strong concurrency model.
 
 ## 🎯 Core Vision
 
-- **Modular Architecture**: Component-based design for sensors, actuators, decision-making, and communication
-- **Real-Time Performance**: Hard real-time guarantees suitable for mission-critical autonomous operations
-- **Telemetry Streaming**: Robust streaming to remote systems (MQTT, gRPC, or custom binary formats)
-- **No Legacy Dependencies**: Pure Rust—no C/C++ FFI in critical paths
-- **Cross-Platform**: Runs on embedded hardware and desktop environments for testing
+- **Modular Architecture**: Service-based design with clear boundaries and independent deployability
+- **High Performance**: Optimized for low-latency inter-service communication
+- **Production Ready**: Built-in observability, error handling, and resilience patterns
+- **Type-Safe APIs**: Leverage Rust's type system for safe service contracts
+- **Cross-Platform**: Runs on Linux, Windows, macOS, and containerized environments
 
 ## 🏗️ Architecture
 
 ```
 src/
 ├── lib.rs                    # Core framework entry point
-├── telemetry/               # Remote telemetry abstraction layer
-│   ├── mod.rs              # Telemetry trait and interfaces
-│   ├── protocol.rs         # Protocol handlers (MQTT, gRPC)
-│   └── schema.rs           # Data structures for streaming
-├── hal/                     # Hardware abstraction layer
-│   ├── mod.rs              # HAL trait definitions
-│   ├── sensor.rs           # Sensor interfaces
-│   ├── actuator.rs         # Actuator interfaces
-│   └── platform.rs         # Platform-specific implementations
-├── scheduler/              # Real-time scheduling
-│   ├── mod.rs              # Scheduling engine
-│   ├── task.rs             # Task definitions
-│   └── timing.rs           # Timing utilities (WCET tracking)
-└── components/             # Modular autonomous system components
-    ├── mod.rs              # Component registry
-    ├── navigation.rs       # Navigation module
-    ├── control.rs          # Control module
-    └── diagnostics.rs      # Diagnostics module
+├── service/                  # Service definition and lifecycle
+│   ├── mod.rs              # Service trait and registry
+│   ├── builder.rs          # Service builder pattern
+│   └── context.rs          # Service execution context
+├── rpc/                      # RPC and inter-service communication
+│   ├── mod.rs              # RPC trait definitions
+│   ├── grpc.rs             # gRPC implementation
+│   ├── http.rs             # REST/HTTP implementation
+│   └── codec.rs            # Message serialization
+├── observability/           # Logging, metrics, tracing
+│   ├── mod.rs              # Observability traits
+│   ├── logging.rs          # Structured logging
+│   ├── metrics.rs          # Metrics collection
+│   └── tracing.rs          # Distributed tracing
+├── resilience/             # Error handling and resilience
+│   ├── mod.rs              # Resilience patterns
+│   ├── circuit_breaker.rs  # Circuit breaker pattern
+│   ├── retry.rs            # Retry with backoff
+│   └── timeout.rs          # Timeout handling
+└── middleware/             # Cross-cutting concerns
+    ├── mod.rs              # Middleware chain
+    ├── auth.rs             # Authentication/authorization
+    ├── validation.rs       # Request validation
+    └── rate_limit.rs       # Rate limiting
 ```
 
 ## 🚀 Key Features
 
-### 1. **Component-Based Design**
-Each module is independently deployable and testable:
-- Sensors, actuators, and decision-making modules
-- Clean interfaces for integration
-- Hot-swappable components
+### 1. **Service-Based Architecture**
+Build independent, deployable services with:
+- Clear service boundaries and contracts
+- Service registry and discovery
+- Hot-reload and dynamic service registration
+- Versioned APIs for backward compatibility
 
-### 2. **Hard Real-Time Guarantees**
-- **Zero allocations** in timing-critical paths
-- **O(1) operations** with bounded worst-case execution time (WCET)
-- Lock-free synchronization using atomics and bounded channels
-- No mutexes, RwLocks, or unbounded async operations
+### 2. **High-Performance Communication**
+- **gRPC** — Type-safe, efficient RPC with streaming
+- **REST/HTTP** — Standard web APIs with middleware support
+- **Message Queues** — Asynchronous communication patterns
+- Built-in serialization with protobuf and JSON
 
-### 3. **Telemetry Abstraction**
-- Structured data streaming to remote systems
-- Support for multiple protocols (MQTT, gRPC, custom)
-- Backpressure handling and circuit breaking
-- Minimal latency overhead
+### 3. **Production-Ready Observability**
+- **Structured Logging** — Context-aware, queryable logs
+- **Metrics** — Built-in Prometheus-compatible metrics
+- **Distributed Tracing** — Trace requests across services
+- Health checks and service status monitoring
 
-### 4. **Hardware Abstraction Layer**
-- Pure Rust HAL without unsafe code in critical paths
-- Support for multiple platforms (x86, ARM, RISC-V)
-- Platform-specific fallbacks with `#[cfg]` blocks
+### 4. **Resilience & Error Handling**
+- **Circuit Breaker** — Prevent cascading failures
+- **Retry with Backoff** — Exponential backoff and jitter
+- **Timeout Handling** — Bounded execution times
+- **Graceful Degradation** — Fallback strategies
 
 ## 📋 Requirements
 
 ### Build
 - **Rust**: 1.70+ (stable)
 - **Cargo**: Latest
+- **Protocol Buffers** (optional): For gRPC
 
 ### Runtime
-- **Desktop Testing**: Linux, Windows, macOS (x86_64)
-- **Embedded Targets**: ARM, RISC-V (configurable)
+- **Development**: Linux, Windows, macOS (x86_64, ARM64)
+- **Production**: Kubernetes, Docker, or standalone binaries
 
 ## 🛠️ Getting Started
 
@@ -77,58 +86,61 @@ Each module is independently deployable and testable:
 cargo build --release
 ```
 
-### Test (Desktop Simulation)
+### Run Tests
 ```bash
 cargo test --all-features --verbose
 cargo test --all-features --release
 ```
 
-### Cross-Platform Build
+### Run a Service
 ```bash
-# Linux
-cargo build --release --target x86_64-unknown-linux-gnu
+# With debug logging
+RUST_LOG=debug cargo run --release
 
-# Windows
-cargo build --release --target x86_64-pc-windows-msvc
-
-# macOS
-cargo build --release --target x86_64-apple-darwin
+# With specific feature
+cargo run --release --features "grpc,metrics"
 ```
 
-### Run with Telemetry
+### Build Docker Image
 ```bash
-RUST_LOG=debug cargo run --release --features "telemetry-mqtt"
+docker build -t room619:latest .
+docker run -p 50051:50051 room619:latest
 ```
 
 ## 🔐 Code Standards
 
-All code must adhere to **hard real-time Rust** standards:
+All code must follow these Rust best practices:
 
 ### ❌ Forbidden Patterns
 ```rust
 .unwrap() / .expect()       // Use ? operator instead
-vec![] in hot paths         // Stack alloc or heapless collections
-HashMap / thread::spawn()   // Use BTreeMap / crossbeam channels
-Mutex / RwLock              // Use atomics or lock-free structures
-allocate / deallocate       // Pre-allocate or use stack
+panic!() in production code // Use Result<T, E>
+#[allow(clippy::*)]         // Fix warnings, don't suppress
+unsafe {} without docs      // Document with // SAFETY:
 ```
 
 ### ✅ Required Patterns
 ```rust
-operation()?                // Error propagation
-let buf = [0u8; 256];      // Stack allocation
-let (tx, rx) = crossbeam::channel::bounded(N);  // Bounded channels
-std::sync::atomic::*        // Lock-free synchronization
+operation()?                // Error propagation with ?
+Err(error)?                 // Convert errors properly
+pub fn op() -> Result<T, E> { }  // Return results
+/// # Errors
+/// Describes possible errors
+pub fn op() -> Result<T, E> { }
 ```
 
 ### Documentation Requirements
 ```rust
-/// Operation description.
-/// # Real-Time Guarantees
-/// WCET: O(1), ≤ 100µs. Zero allocations.
+/// Sends a request to the downstream service.
+/// 
 /// # Errors
-/// Returns `Err` if timeout or resource exhausted.
-pub fn operation() -> Result<T, E> { }
+/// Returns error if service is unavailable or request times out.
+/// 
+/// # Example
+/// ```
+/// let response = client.send(request).await?;
+/// ```
+pub async fn send(&self, request: Request) -> Result<Response, Error> { }
 ```
 
 ## 🔄 CI/CD Pipelines
@@ -138,55 +150,66 @@ Runs on every push and pull request:
 - ✅ Cargo check
 - ✅ Rustfmt (code formatting)
 - ✅ Clippy (linting)
-- ✅ Unit tests
-- ✅ Desktop simulation tests
-- ✅ Integration tests (telemetry)
+- ✅ Unit & integration tests
 - ✅ Cross-platform builds (Linux, Windows, macOS)
+- ✅ Docker image builds
+- ✅ Performance benchmarks
 
 ### Continuous Deployment (CD)
 Triggered on version tags (`v*`):
-- 📦 Automated release builds
-- 📤 Platform-specific artifacts
-- 🏷️ GitHub release creation
+- 📦 Build release binaries
+- 🐳 Push Docker images to registry
+- 📤 Upload artifacts to GitHub releases
+- 🏷️ Create release notes
 
-### Security & Real-Time Checks
+### Security & Quality Checks
 Runs on every push and pull request:
 - 🔍 Dependency vulnerability scanning (RustSec)
 - 📜 License compliance (Cargo Deny)
 - 🐛 Undefined behavior detection (Miri)
-- ⏱️ Hard real-time validation (forbidden patterns)
-- 📡 Telemetry interface validation
+- 📊 Code coverage reporting
+- ⚡ Performance regression detection
 
 ## 📦 Dependencies
 
-### Allowed
-- `crossbeam` — Cross-platform concurrency (bounded channels, work-stealing)
-- `parking_lot` — High-performance synchronization primitives
-- `tokio` — Async runtime (with timeout bounds)
-- `heapless` — Static collections for embedded systems
-- Minimal pure-Rust crates
+### Core
+- `tokio` — Async runtime
+- `tonic` — gRPC framework
+- `prost` — Protocol Buffers serialization
+- `serde` — Serialization framework
 
-### Forbidden
-- C/C++ FFI (without explicit approval)
-- Unbounded async operations
-- Mutex/RwLock in hard real-time paths
-- Allocating collections in hot paths
+### Observability
+- `tracing` — Structured logging and tracing
+- `prometheus` — Metrics collection
+- `opentelemetry` — Distributed tracing
 
-## 📊 Telemetry Protocol
+### Resilience
+- `futures` — Async utilities
+- `async-retry` — Retry logic
+- `tower` — Service middleware
 
-### Supported Formats
-- **MQTT**: Lightweight, pub-sub messaging
-- **gRPC**: High-performance RPC with streaming
-- **Custom Binary**: Optimized for specific use cases
+### Testing
+- `mockall` — Mock generation
+- `testcontainers` — Docker test containers
 
-### Message Structure
+## 📊 Inter-Service Communication
+
+### Supported Protocols
+- **gRPC** — Type-safe, high-performance RPC with streaming
+- **REST/HTTP** — Standard web APIs with JSON/protobuf
+- **Message Queues** — Async, decoupled communication
+
+### Service Contract Example
 ```rust
-pub struct TelemetryFrame {
-    timestamp: Instant,
-    component_id: u8,
-    sensor_data: Vec<SensorReading>,
-    actuator_states: Vec<ActuatorState>,
-    diagnostics: DiagnosticsInfo,
+#[derive(Serialize, Deserialize)]
+pub struct ServiceRequest {
+    pub user_id: String,
+    pub action: String,
+}
+
+pub struct ServiceResponse {
+    pub status: String,
+    pub data: Option<Vec<u8>>,
 }
 ```
 
@@ -199,45 +222,52 @@ cargo test --lib
 ```
 
 ### Integration Tests
-Located in `tests/` directory:
+Located in `tests/` directory with testcontainers:
 ```bash
 cargo test --test '*'
 ```
 
-### Benchmarks
-Performance profiling with `criterion`:
+### Performance Benchmarks
+Criterion-based benchmarks:
 ```bash
 cargo bench
 ```
 
 ## 🎓 Team Roles & Responsibilities
 
-- **System Architect** — Modular structure, interface design
-- **Embedded Developer** — HAL implementation, low-level hardware interactions
-- **Telemetry Engineer** — Communication layer, protocol handlers, remote system compatibility
-- **Integrator & Tester** — System validation, performance verification, cross-platform testing
+- **Platform Architect** — Framework design, service contracts
+- **Backend Developer** — Service implementation, business logic
+- **DevOps Engineer** — CI/CD, containerization, deployment
+- **QA/Tester** — Integration testing, performance validation
 
 ## 📚 Documentation
 
-- **Architecture**: See `docs/architecture.md`
+- **Architecture**: See `docs/ARCHITECTURE.md`
 - **API Reference**: Generated via `cargo doc --open`
-- **Hard Real-Time Guidelines**: See `.github/Infrastructure/copilot-instructions.md`
+- **Development Guide**: See `CONTRIBUTING.md`
+- **Coding Standards**: See `.github/Infrastructure/copilot-instructions.md`
 
 ## 🚢 Deployment
 
-### Desktop Testing
+### Local Development
 ```bash
-cargo run --release --features "simulation"
+cargo run --release --all-features
 ```
 
-### Embedded Deployment
+### Docker Deployment
 ```bash
-cargo build --release --target arm-unknown-linux-gnueabihf
+docker build -t room619:latest .
+docker run -p 50051:50051 -e RUST_LOG=info room619:latest
+```
+
+### Kubernetes Deployment
+```bash
+kubectl apply -f k8s/deployment.yaml
 ```
 
 ## 📝 Commit Convention
 
-- `feat:` New feature
+- `feat:` New feature or service
 - `fix:` Bug fix
 - `docs:` Documentation
 - `test:` Test improvements
@@ -247,11 +277,11 @@ cargo build --release --target arm-unknown-linux-gnueabihf
 
 Example:
 ```
-feat: add MQTT telemetry protocol support
+feat: add user service with gRPC API
 
-- Implement MQTT client abstraction
-- Add bounded message queue
-- Verify hard real-time constraints
+- Implement user CRUD operations
+- Add authentication middleware
+- Include integration tests
 ```
 
 ## 🤝 Contributing
@@ -265,10 +295,12 @@ feat: add MQTT telemetry protocol support
 
 [Add your license here]
 
-## 🎉 Hackathon Deliverables
+## 🎉 Project Milestones
 
-By the end of the hackathon, we aim to deliver:
-- ✅ Working prototype running on desktop and embedded hardware
-- ✅ Real-time telemetry streaming to remote system
-- ✅ Comprehensive architecture documentation
-- ✅ Integration points clearly defined
+Target deliverables:
+- ✅ Core framework with service registry and RPC layer
+- ✅ Observability (logging, metrics, tracing)
+- ✅ Resilience patterns (circuit breaker, retry, timeout)
+- ✅ Example services (User, Auth, Product)
+- ✅ Comprehensive documentation and API reference
+- ✅ Production-ready Docker/Kubernetes support

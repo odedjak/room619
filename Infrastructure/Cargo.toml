@@ -1,0 +1,22 @@
+[package]
+name = "room619-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+num_cpus = { workspace = true }
+
+[dev-dependencies]
+
+[[bin]]
+name = "room619"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

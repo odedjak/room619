@@ -2,7 +2,6 @@
 # Show code size for embedded targets
 rustflags = [
     "-C", "opt-level=3",
-    "-C", "lto=fat",
     "-C", "codegen-units=1",
 ]
 

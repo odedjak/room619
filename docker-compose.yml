@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # room619 micro-services framework
+  room619:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: room619
+    ports:
+      - "50051:50051"  # gRPC port
+      - "8080:8080"    # HTTP port
+    environment:
+      RUST_LOG: "info"
+      SERVICE_NAME: "room619"
+      SERVICE_PORT: "50051"
+      HTTP_PORT: "8080"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/room619"
+    depends_on:
+      - postgres
+      - jaeger
+    networks:
+      - room619-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: room619-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: room619
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - room619-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: room619-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "6831:6831/udp"  # Jaeger agent
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+    networks:
+      - room619-network
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: room619-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - room619-network
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: room619-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - room619-network
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  room619-network:
+    driver: bridge
