@@ -1,30 +1,34 @@
-# Architecture: Modular Real-Time Embedded Framework
+# Architecture: Modular Micro-Services Framework in Rust
 
 ## Executive Summary
 
-room619 is a modular, scalable, real-time embedded framework built in Rust for autonomous systems. It replaces traditional C/C++ embedded development with Rust's memory safety and zero-cost abstractions while maintaining hard real-time guarantees.
+room619 is a modern micro-services framework built in Rust for building scalable, distributed systems. It provides abstractions for service communication, resilience, and observability while leveraging Rust's type safety and performance characteristics.
 
 ## Design Principles
 
-### 1. **Modularity**
-- Each component (HAL, Telemetry, Scheduler, Autonomous Modules) is independently deployable
+### 1. **Modularity & Loose Coupling**
+- Each service is independently deployable and testable
+- Services communicate through well-defined APIs (gRPC, REST)
 - Clear separation of concerns with trait-based interfaces
-- Minimal coupling between modules
+- Minimal dependencies between services
 
-### 2. **Real-Time Determinism**
-- **Hard Real-Time**: Zero allocations, lock-free primitives, bounded operations
-- **Bounded Worst-Case Execution Time (WCET)**: All functions document timing guarantees
-- **Predictable Latency**: O(1) operations in critical paths
+### 2. **High Performance & Low Latency**
+- Async-first design using Tokio runtime
+- Optimized serialization with Protocol Buffers
+- Connection pooling and request batching
+- Zero-copy message passing where possible
 
-### 3. **Safety & Reliability**
-- Memory safety without runtime overhead
-- Exhaustive pattern matching with compiler enforcement
-- Result-based error handling with no panics in production code
+### 3. **Observability & Debuggability**
+- Structured logging with context propagation
+- Distributed tracing across service boundaries
+- Metrics collection for performance monitoring
+- Health checks and service status reporting
 
-### 4. **Cross-Platform Support**
-- Desktop testing (Linux, Windows, macOS)
-- Embedded targets (ARM, RISC-V) via conditional compilation
-- Platform abstraction layer for hardware interactions
+### 4. **Resilience & Fault Tolerance**
+- Circuit breaker pattern for failure isolation
+- Retry logic with exponential backoff
+- Timeout handling for bounded latency
+- Graceful degradation with fallback strategies
 
 ## System Architecture
 
@@ -58,330 +62,296 @@ room619 is a modular, scalable, real-time embedded framework built in Rust for a
 
 ## Core Modules
 
-### 1. **Hardware Abstraction Layer (HAL)** (`src/hal/`)
+### 1. **Service Layer** (`src/service/`)
 
-**Purpose**: Abstraction for sensor and actuator interactions
+**Purpose**: Service lifecycle management and registration
 
 **Key Traits**:
 ```rust
-pub trait Sensor<T> {
-    fn read(&mut self) -> Result<T, SensorError>;
-    fn sample_rate(&self) -> Duration;
+pub trait Service: Send + Sync {
+    async fn start(&mut self) -> Result<(), ServiceError>;
+    async fn stop(&mut self) -> Result<(), ServiceError>;
+    fn health_check(&self) -> HealthStatus;
 }
 
-pub trait Actuator<T> {
-    fn write(&mut self, value: T) -> Result<(), ActuatorError>;
-    fn response_time(&self) -> Duration;
+pub struct ServiceContext {
+    pub name: String,
+    pub version: String,
+    pub logger: Logger,
+    pub metrics: MetricsCollector,
 }
 ```
 
 **Files**:
-- `mod.rs` — Trait definitions and platform selection
-- `sensor.rs` — Sensor trait and implementations
-- `actuator.rs` — Actuator trait and implementations
-- `platform.rs` — Platform-specific hardware bindings
+- `mod.rs` — Service trait and lifecycle
+- `builder.rs` — Service construction with configuration
+- `context.rs` — Execution context and shared resources
+- `registry.rs` — Service discovery and registration
 
-**Hard Real-Time Constraints**:
-- Read/write operations must complete within documented deadlines
-- No allocations in hot read/write loops
-- Stack-allocated buffers only
+### 2. **RPC Layer** (`src/rpc/`)
 
-### 2. **Telemetry Layer** (`src/telemetry/`)
-
-**Purpose**: Structured data streaming to remote systems
+**Purpose**: Inter-service communication abstraction
 
 **Key Traits**:
 ```rust
-pub trait TelemetryClient {
-    fn send_frame(&mut self, frame: &TelemetryFrame) -> Result<(), TelemetryError>;
-    fn is_connected(&self) -> bool;
+pub trait RpcClient: Send + Sync {
+    async fn call(&self, request: &Request) -> Result<Response, RpcError>;
 }
 
-pub struct TelemetryFrame {
-    timestamp: Instant,
-    component_id: u8,
-    sensor_data: &'static [SensorReading],
-    diagnostics: DiagnosticsInfo,
+pub struct RpcConfig {
+    pub endpoint: String,
+    pub timeout: Duration,
+    pub max_retries: u32,
 }
 ```
 
 **Supported Protocols**:
-- **MQTT** — Lightweight pub-sub (low bandwidth)
-- **gRPC** — High-performance streaming (low latency)
-- **Custom Binary** — Optimized for specific systems
+- **gRPC** — Type-safe, efficient streaming RPC
+- **HTTP/REST** — Standard web APIs
+- **Message Queues** — Async, decoupled communication
 
 **Files**:
-- `mod.rs` — Client trait and frame definitions
-- `protocol.rs` — Protocol implementations
-- `schema.rs` — Serialization/deserialization
+- `mod.rs` — RPC client/server traits
+- `grpc.rs` — gRPC implementation with Tonic
+- `http.rs` — REST/HTTP implementation with Axum
+- `codec.rs` — Message serialization (Protobuf, JSON)
 
-**Real-Time Constraints**:
-- Send operations use bounded channels
-- Backpressure handling prevents allocation spikes
-- Zero allocations in send path
+### 3. **Observability Layer** (`src/observability/`)
 
-### 3. **Scheduler** (`src/scheduler/`)
+**Purpose**: Logging, metrics, and tracing
 
-**Purpose**: Real-time task scheduling and coordination
+**Key Components**:
 
-**Key Concepts**:
+#### Structured Logging
 ```rust
-pub struct Task {
-    id: TaskId,
-    deadline: Duration,
-    period: Duration,
-    priority: Priority,
-    wcet: Duration,  // Worst-case execution time
-}
-
-pub trait Scheduler {
-    fn schedule(&mut self, task: Task) -> Result<(), ScheduleError>;
-    fn run(&mut self) -> Result<(), ScheduleError>;
+pub trait Logger: Send + Sync {
+    fn log(&self, level: Level, message: &str, context: &Context);
 }
 ```
 
-**Scheduling Strategies**:
-- **Fixed-Priority** — Deterministic, suitable for embedded
-- **Rate-Monotonic** — Priority inversely proportional to period
-- **Deadline-Monotonic** — Priority inversely proportional to deadline
-
-**Files**:
-- `mod.rs` — Scheduler trait and runner
-- `task.rs` — Task definitions
-- `timing.rs` — WCET tracking and validation
-
-**Hard Real-Time Guarantees**:
-- No task starvation
-- Deadline misses detected and reported
-- Context switching overhead minimized
-
-### 4. **Autonomous Components** (`src/components/`)
-
-**Purpose**: Mission-specific autonomous system modules
-
-**Example Components**:
-
-#### Navigation Module
+#### Metrics Collection
 ```rust
-pub struct NavigationState {
-    position: [f32; 3],
-    velocity: [f32; 3],
-}
-
-pub trait NavigationEngine {
-    fn update(&mut self, sensor_data: &SensorData) -> Result<NavigationState, NavError>;
+pub trait MetricsCollector: Send + Sync {
+    fn counter(&self, name: &str) -> u64;
+    fn histogram(&self, name: &str) -> Histogram;
+    fn gauge(&self, name: &str) -> f64;
 }
 ```
 
-#### Control Module
+#### Distributed Tracing
 ```rust
-pub trait ControlSystem {
-    fn compute_control(&mut self, state: &SystemState) -> Result<ControlCommands, ControlError>;
-}
-```
-
-#### Diagnostics Module
-```rust
-pub trait DiagnosticsMonitor {
-    fn check_health(&self) -> HealthStatus;
-    fn report_anomalies(&self) -> Vec<Anomaly>;
+pub trait Tracer: Send + Sync {
+    fn span(&self, name: &str) -> Span;
 }
 ```
 
 **Files**:
-- `mod.rs` — Component registry
-- `navigation.rs` — Navigation logic
-- `control.rs` — Control logic
-- `diagnostics.rs` — Health monitoring
+- `mod.rs` — Observability traits
+- `logging.rs` — Structured logging with tracing-rs
+- `metrics.rs` — Prometheus-compatible metrics
+- `tracing.rs` — OpenTelemetry integration
+
+### 4. **Resilience Layer** (`src/resilience/`)
+
+**Purpose**: Error handling and failure recovery
+
+**Patterns**:
+
+#### Circuit Breaker
+```rust
+pub struct CircuitBreaker {
+    state: CircuitBreakerState,
+    failure_threshold: u32,
+    success_threshold: u32,
+}
+```
+
+#### Retry with Backoff
+```rust
+pub struct RetryPolicy {
+    max_retries: u32,
+    backoff_strategy: BackoffStrategy,
+    jitter: bool,
+}
+```
+
+#### Timeout Management
+```rust
+pub async fn with_timeout<F, T>(
+    future: F,
+    timeout: Duration,
+) -> Result<T, TimeoutError> { }
+```
+
+**Files**:
+- `mod.rs` — Resilience trait definitions
+- `circuit_breaker.rs` — Circuit breaker pattern
+- `retry.rs` — Retry logic with exponential backoff
+- `timeout.rs` — Timeout and deadline handling
+- `fallback.rs` — Fallback strategies
+
+### 5. **Middleware Layer** (`src/middleware/`)
+
+**Purpose**: Cross-cutting concerns
+
+**Examples**:
+
+#### Authentication
+```rust
+pub trait AuthMiddleware {
+    async fn authenticate(&self, request: &Request) -> Result<Identity, AuthError>;
+}
+```
+
+#### Rate Limiting
+```rust
+pub struct RateLimiter {
+    requests_per_second: u32,
+}
+```
+
+#### Request Validation
+```rust
+pub trait Validator {
+    fn validate(&self, request: &Request) -> Result<(), ValidationError>;
+}
+```
+
+**Files**:
+- `mod.rs` — Middleware chain
+- `auth.rs` — Authentication and authorization
+- `rate_limit.rs` — Rate limiting
+- `validation.rs` — Request validation
 
 ## Data Flow
 
-### Typical Execution Cycle
+### Typical Request Flow
 
 ```
-1. Scheduler wakes periodic task
+1. Client sends request to API Gateway
    ↓
-2. HAL reads sensors (bounded time)
+2. Gateway routes to appropriate service
    ↓
-3. Component processes sensor data
+3. Service receives request with distributed tracing
    ↓
-4. Control system computes actuator commands
+4. Authentication middleware validates identity
    ↓
-5. HAL writes to actuators (bounded time)
+5. Rate limiter checks quotas
    ↓
-6. Telemetry sends frame to remote system
+6. Validation middleware checks request format
    ↓
-7. Diagnostics checks system health
+7. Service business logic executes
    ↓
-8. Sleep until next deadline
+8. Optional: Call downstream services (with circuit breaker)
+   ↓
+9. Metrics and traces recorded
+   ↓
+10. Response sent back to client
 ```
 
-### Memory Management
+### Service-to-Service Communication
 
-**Stack Allocation** (Preferred):
-```rust
-let buffer = [0u8; 256];  // Fixed-size, zero-allocation
 ```
-
-**Bounded Heap** (If necessary):
-```rust
-use heapless::Vec;
-let mut vec = Vec::<u8, 256>::new();  // Bounded capacity
-```
-
-**Lock-Free Synchronization**:
-```rust
-use crossbeam::channel::bounded;
-let (tx, rx) = bounded(32);  // Bounded queue, no locks
+Service A                   Service B
+   │                           │
+   ├─ Create RPC Client ──────┐│
+   │                          ││
+   ├─ Add Auth Headers ───────┤├─ Authenticate
+   │                          ││
+   ├─ Add Trace Context ──────┤├─ Extract Trace
+   │                          ││
+   ├─ Send with Timeout ──────┤├─ Process Request
+   │                          ││
+   ├─ Circuit Breaker ◄───────┤├─ Send Response
+   │                          ││
+   └─ Record Metrics ────────┬┘│
+                            └─┘
 ```
 
 ## Error Handling
 
-All fallible operations use `Result<T, E>`:
+### Result-Based Error Handling
+
+All fallible operations return `Result<T, E>`:
 
 ```rust
-pub fn read_sensor(&mut self) -> Result<SensorData, SensorError> {
-    // Implementation
+pub enum ServiceError {
+    NotFound(String),
+    InvalidRequest(String),
+    Timeout,
+    Internal(String),
 }
 
-// Usage with ? operator (no panic)
-pub fn update_state(&mut self) -> Result<(), StateError> {
-    let data = self.read_sensor()?;
-    self.process_data(data)?;
-    Ok(())
+pub async fn get_user(id: &str) -> Result<User, ServiceError> {
+    // Implementation using ? operator
 }
 ```
+
+### Error Propagation
+
+- Use `?` operator for automatic error conversion and propagation
+- Never use `.unwrap()` or `.expect()` in production code
+- Convert errors to appropriate HTTP status codes at API boundaries
 
 ## Configuration & Features
 
 ### Compile-Time Configuration
 ```toml
 [features]
-default = ["desktop"]
-desktop = ["simulation"]
-embedded-arm = ["hal-arm"]
-embedded-riscv = ["hal-riscv"]
-telemetry-mqtt = ["mqtt"]
-telemetry-grpc = ["grpc"]
+default = ["grpc", "logging"]
+grpc = ["tonic", "prost"]
+http = ["axum", "serde_json"]
+logging = ["tracing", "tracing-subscriber"]
+metrics = ["prometheus"]
 ```
 
 ### Runtime Configuration
 Environment variables:
 ```bash
-RUST_LOG=debug              # Logging level
-TELEMETRY_ENDPOINT=...     # Remote endpoint
-SCHEDULING_MODE=fixed      # Scheduling algorithm
+RUST_LOG=info              # Logging level
+SERVICE_NAME=user-service  # Service identifier
+SERVICE_PORT=50051         # gRPC port
+HTTP_PORT=8080             # HTTP port
+DATABASE_URL=...           # Database connection
 ```
 
 ## Concurrency Model
 
-### No Mutex/RwLock in Real-Time Paths
+### Async-First with Tokio
 
-**Instead Use**:
-- **Atomics** — Lock-free state updates
+All I/O operations are async:
 ```rust
-use std::sync::atomic::{AtomicU32, Ordering};
-let counter = AtomicU32::new(0);
-counter.fetch_add(1, Ordering::SeqCst);
+#[tokio::main]
+async fn main() {
+    let service = UserService::new().await?;
+    service.start().await?;
+}
 ```
 
-- **Bounded Channels** — Message passing
-```rust
-let (tx, rx) = crossbeam::channel::bounded(32);
-tx.send(message)?;
-let msg = rx.recv()?;
-```
+### No Blocking Operations in Async Context
 
-- **Arc + Atomic** — Shared ownership + atomic updates
-```rust
-use std::sync::Arc;
-let shared = Arc::new(AtomicU32::new(0));
-```
+- No synchronous I/O (use `tokio::fs`, `tokio::net`)
+- No blocking locks (use `tokio::sync::Mutex`)
+- No CPU-bound operations that block for long
 
-## Testing Strategy
+## Performance Characteristics
 
-### Unit Tests
-```bash
-cargo test --lib
-```
-
-### Integration Tests
-```bash
-cargo test --test '*'
-```
-
-### Real-Time Validation
-```bash
-cargo test --all-features --release
-```
-
-## Performance Guarantees
-
-| Operation | WCET | Allocation |
-|-----------|------|-----------|
-| Sensor Read | ≤ 10µs | None |
-| Control Compute | ≤ 100µs | None |
-| Telemetry Send | ≤ 50µs | None |
-| Task Context Switch | ≤ 5µs | None |
+| Operation | Latency Target | Notes |
+|-----------|---------|-------|
+| Service startup | < 5s | Cold start |
+| RPC request | < 100ms | p99 latency |
+| Metric write | < 1ms | Non-blocking |
+| Log write | < 10ms | Buffered |
+| Trace collection | < 2ms | Sampling supported |
 
 ## Platform Support
 
-### Desktop (Testing)
-- Linux (x86_64)
+### Development
+- Linux (x86_64, ARM64)
 - Windows (x86_64)
 - macOS (x86_64, ARM64)
 
-### Embedded (Production)
-- ARM Cortex-M4/M7 (STM32, NXP, etc.)
-- ARM Cortex-A9+ (BeagleBone, RPI4, etc.)
-- RISC-V (Future)
-
-## Deployment Pipeline
-
-```
-Source Code
-    ↓
-CI/CD (GitHub Actions)
-  ├─ Cargo check
-  ├─ Rustfmt
-  ├─ Clippy
-  ├─ Tests
-  └─ Cross-platform build
-    ↓
-Security Checks
-  ├─ RustSec audit
-  ├─ Cargo Deny
-  ├─ Miri (UB detection)
-  └─ Real-time validation
-    ↓
-Release Artifacts
-  ├─ Linux binary
-  ├─ Windows binary
-  └─ macOS binary
-```
-
-## Extension Points
-
-### Adding a New Sensor
-1. Implement `Sensor<T>` trait in `src/hal/sensor.rs`
-2. Register in `src/hal/mod.rs`
-3. Add integration test in `tests/sensor_integration.rs`
-
-### Adding a New Protocol
-1. Implement `TelemetryClient` in `src/telemetry/protocol.rs`
-2. Define serialization in `src/telemetry/schema.rs`
-3. Add feature flag in `Cargo.toml`
-
-### Adding a New Component
-1. Create module in `src/components/`
-2. Implement component interface
-3. Register in `src/components/mod.rs`
-4. Add to scheduler
-
-## Future Enhancements
-
-- [ ] Multi-core scheduling with core affinity
-- [ ] Time-triggered vs event-triggered hybrid scheduler
-- [ ] Formal verification of timing properties
-- [ ] Probabilistic real-time analysis
-- [ ] Hardware-in-the-loop simulation
+### Deployment
+- Kubernetes (preferred)
+- Docker containers
+- Standalone binaries on Linux servers

@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["run", "--package=room619-core"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$rustc"
+        },
+        {
+            "label": "Test",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["test", "--package=room619-core"],
+            "group": "test",
+            "problemMatcher": "$rustc"
+        },
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["build", "--release"],
+            "group": "build",
+            "problemMatcher": "$rustc"
+        }
+    ]
+}

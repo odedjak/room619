@@ -1,6 +1,6 @@
 # Contributing to room619
 
-Thank you for contributing to the Modular Real-Time Embedded Framework! This document provides guidelines for participating in the project.
+Thank you for contributing to the Modular Micro-Services Framework! This document provides guidelines for participating in the project.
 
 ## Getting Started
 
@@ -8,6 +8,7 @@ Thank you for contributing to the Modular Real-Time Embedded Framework! This doc
 - Rust 1.70+ (stable)
 - Git
 - Cargo
+- Docker (for testing services locally)
 
 ### Setup Development Environment
 ```bash
@@ -27,10 +28,11 @@ git checkout -b feature/your-feature-name
 ```
 
 ### 2. Make Changes Following Code Standards
-- All code must adhere to **hard real-time Rust** guidelines
+- All code must use Rust best practices
 - No `.unwrap()` or `.expect()` — use `?` operator
-- No unbounded allocations in critical paths
-- Document timing constraints with `WCET:` comments
+- Async-first design for I/O operations
+- Comprehensive error handling with `Result<T, E>`
+- Document all public APIs with examples
 
 ### 3. Run Local Validation
 ```bash
@@ -43,32 +45,30 @@ cargo clippy --all-targets --all-features -- -D warnings
 # Test
 cargo test --all-features --verbose
 
-# Check real-time constraints
+# Check with all features
 cargo check-all
 ```
 
 ### 4. Commit with Conventional Messages
 ```
-feat: add MQTT telemetry protocol
-fix: resolve sensor timeout issue
-docs: update architecture guide
-test: add integration tests for scheduler
-refactor: simplify HAL abstraction
-perf: optimize task context switching
+feat: add user service with gRPC API
+fix: handle service connection timeout
+docs: document resilience patterns
+test: add integration tests for auth middleware
+refactor: simplify RPC error handling
+perf: optimize service discovery cache
 ci: improve GitHub Actions workflows
 ```
 
 Example detailed message:
 ```
-feat: add MQTT telemetry protocol support
+feat: add user service with gRPC API
 
-- Implement MQTT client with bounded message queue
-- Add automatic reconnection with exponential backoff
-- Verify hard real-time constraints (≤50µs send latency)
-- Include integration tests and documentation
-
-WCET: O(1), ≤ 50µs
-Allocation: None in hot path
+- Implement CRUD operations for users
+- Add authentication middleware
+- Include integration tests
+- Add OpenTelemetry tracing support
+- Document service contract in proto/user.proto
 ```
 
 ### 5. Push and Create Pull Request
@@ -80,76 +80,98 @@ Then create a PR with:
 - Clear title describing the change
 - Description of what/why/how
 - Link to related issues
-- WCET guarantees for new functions
+- Mention any breaking changes
 
 ## Code Standards
 
-### Hard Real-Time Requirements
+### Rust Best Practices
 
-#### ❌ Forbidden in Timing-Critical Code
+#### ❌ Forbidden Patterns
 ```rust
 // Never use unwrap/expect
 let val = option.unwrap();  // ❌ FORBIDDEN
 let val = option.expect("msg");  // ❌ FORBIDDEN
 
-// Never allocate
-let vec = vec![1, 2, 3];  // ❌ FORBIDDEN in hot paths
-let map = HashMap::new();  // ❌ FORBIDDEN
+// Never panic in production code
+panic!("Something went wrong");  // ❌ FORBIDDEN
 
-// Never use synchronization primitives
-let lock = Mutex::new(data);  // ❌ FORBIDDEN
-let rw = RwLock::new(data);  // ❌ FORBIDDEN
+// Never suppress warnings
+#[allow(clippy::should_implement_trait)]  // ❌ FORBIDDEN
 ```
 
 #### ✅ Required Patterns
 ```rust
 // Use ? operator for error propagation
-fn operation() -> Result<(), Error> {
-    let val = option?;  // ✅ Proper
+pub async fn operation() -> Result<(), Error> {
+    let val = operation()?;  // ✅ Proper
     Ok(())
 }
 
-// Use stack allocation
-let buf = [0u8; 256];  // ✅ Fixed-size
+// Use Result<T, E> for all fallible operations
+pub async fn fetch_user(id: &str) -> Result<User, UserError> {
+    // Implementation
+}
 
-// Use bounded channels
-let (tx, rx) = crossbeam::channel::bounded(32);  // ✅ Proper
-
-// Use atomics
-use std::sync::atomic::{AtomicU32, Ordering};
-let counter = AtomicU32::new(0);
-counter.fetch_add(1, Ordering::SeqCst);  // ✅ Lock-free
+// Document errors in docstring
+/// Fetches a user by ID.
+/// 
+/// # Errors
+/// Returns `UserError::NotFound` if user doesn't exist.
+pub async fn get_user(id: &str) -> Result<User, UserError> { }
 ```
 
 ### Documentation Requirements
 
-Every public function must document:
+Every public function and service must document:
 - What it does
-- WCET (Worst-Case Execution Time)
-- Memory requirements
-- Error conditions
+- Possible errors and how to handle them
+- Examples of usage
 
 ```rust
-/// Reads sensor data and returns processed measurement.
-///
-/// This function is part of the main control loop and must complete
-/// within the documented deadline to maintain hard real-time guarantees.
-///
-/// # Real-Time Guarantees
-/// - WCET: O(1), ≤ 10µs
-/// - Allocation: None
-/// - Lock-free: Yes
-///
+/// Sends a request to the user service.
+/// 
+/// This function handles authentication, retries, and circuit breaking
+/// automatically.
+/// 
+/// # Arguments
+/// * `user_id` - The ID of the user to fetch
+/// 
+/// # Returns
+/// Returns the user data or an error if not found or service unavailable.
+/// 
 /// # Errors
-/// Returns `SensorError` if:
-/// - Sensor is not initialized
-/// - Read times out
-/// - Data is invalid or out of range
-///
-/// # Safety
-/// This function does not call any unsafe code.
-pub fn read_sensor(&mut self) -> Result<f32, SensorError> {
+/// Returns `UserServiceError::NotFound` if user doesn't exist.
+/// Returns `UserServiceError::ServiceUnavailable` if service is down.
+/// 
+/// # Example
+/// ```
+/// let user = client.get_user("user123").await?;
+/// println!("User: {}", user.name);
+/// ```
+pub async fn get_user(&self, user_id: &str) -> Result<User, UserServiceError> {
     // Implementation
+}
+```
+
+### Async/Await Guidelines
+
+- Use `async fn` for all I/O-bound operations
+- Never block async code with synchronous operations
+- Use `tokio::spawn` for background tasks
+- Always propagate errors with `?`
+
+```rust
+// ✅ Good
+pub async fn fetch_data(&self, url: &str) -> Result<Data, Error> {
+    let response = reqwest::get(url).await?;
+    let data = response.json().await?;
+    Ok(data)
+}
+
+// ❌ Bad (blocking async context)
+pub async fn fetch_data(&self, url: &str) -> Result<Data, Error> {
+    let data = std::thread::sleep(Duration::from_secs(1));  // NEVER!
+    Ok(data)
 }
 ```
 
@@ -162,8 +184,8 @@ Add tests in the same file as the code:
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_read_sensor() {
+    #[tokio::test]
+    async fn test_get_user() {
         // Test implementation
     }
 }
@@ -173,9 +195,21 @@ mod tests {
 Add tests in `tests/` directory:
 ```bash
 tests/
-├── sensor_integration.rs
-├── telemetry_integration.rs
-└── scheduler_integration.rs
+├── user_service_integration.rs
+├── auth_middleware_integration.rs
+└── circuit_breaker_integration.rs
+```
+
+### Use Testcontainers for Services
+```rust
+use testcontainers::*;
+
+#[tokio::test]
+async fn test_with_database() {
+    let docker = clients::Cli::default();
+    let postgres = docker.run(images::postgres::Postgres::default());
+    // Test implementation
+}
 ```
 
 ### Run All Tests
@@ -194,20 +228,13 @@ cargo bench --all-features
 ### Profiling with Flamegraph
 ```bash
 cargo install flamegraph
-cargo flamegraph --bin room619 -- --profile
-```
-
-### Checking Binary Size
-```bash
-cargo build --release
-wc -c target/release/room619
+cargo flamegraph --bin room619
 ```
 
 ## Security Considerations
 
 ### Dependency Review
 - All external dependencies must be reviewed
-- No C/C++ FFI in critical paths
 - Use `cargo deny` to check licenses and vulnerabilities
 
 ```bash
@@ -216,8 +243,8 @@ cargo deny check
 
 ### Unsafe Code
 - Minimize unsafe blocks
+- Only use when absolutely necessary
 - Always document with `// SAFETY:` comments
-- Include memory barriers where needed
 
 ```rust
 // SAFETY: This is safe because:
@@ -237,10 +264,11 @@ All PRs must pass:
 - ✅ Unit tests
 - ✅ Integration tests
 - ✅ Cross-platform builds
+- ✅ Docker image build
 - ✅ Security audit
-- ✅ Real-time validation
+- ✅ Code coverage
 
-## Commit Hooks (Optional)
+## Pre-Commit Hooks (Optional)
 
 Set up pre-commit hooks to catch issues early:
 
@@ -256,15 +284,46 @@ cargo test --all-features --quiet
 chmod +x .git/hooks/pre-commit
 ```
 
+## Service Development Guidelines
+
+### When Adding a New Service
+
+1. **Define the API Contract**
+   - Use Protocol Buffers for gRPC or OpenAPI for REST
+   - Document request/response schemas
+   - Define error codes
+
+2. **Implement the Service**
+   - Implement `Service` trait
+   - Add middleware for cross-cutting concerns
+   - Include comprehensive error handling
+
+3. **Add Observability**
+   - Structured logging at key points
+   - Metrics for important operations
+   - Distributed tracing integration
+
+4. **Write Tests**
+   - Unit tests for business logic
+   - Integration tests with dependencies
+   - Contract tests for API
+
+5. **Document**
+   - Service README
+   - API documentation
+   - Configuration options
+   - Deployment instructions
+
 ## Reviewing PRs
 
 When reviewing, ensure:
-1. ✅ Code follows hard real-time standards
-2. ✅ No new allocations in hot paths
-3. ✅ All public functions documented with WCET
+1. ✅ Code follows Rust best practices
+2. ✅ Error handling is comprehensive
+3. ✅ All public APIs are documented
 4. ✅ Tests are comprehensive
 5. ✅ CI passes
 6. ✅ Commit messages follow convention
+7. ✅ No unnecessary dependencies added
 
 ## Reporting Issues
 
@@ -277,12 +336,14 @@ Include:
 - Platform (Linux/Windows/macOS)
 - Minimal reproducible example
 - Expected vs actual behavior
+- Service logs if applicable
 
 ### Feature Requests
 Include:
 - Use case description
 - Why it's needed
-- How it impacts WCET/memory constraints
+- Proposed implementation approach
+- Potential impact on performance/latency
 
 ## Discussion & Questions
 
