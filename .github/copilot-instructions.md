@@ -1,83 +1,82 @@
-# AI Coding Agent Instructions for room619
+# Rust Hard Real-Time Programming: Copilot Instructions
 
-## Project Identity
+## Non-Negotiable Rules
 
-**room619** is a Modular Real-Time Embedded Framework for Autonomous Systems built in Rust.
+**❌ Never:**
+```rust
+.unwrap() / .expect()       // Use ? instead
+vec![] in hot paths         // Stack alloc or SmallVec
+HashMap / thread::spawn()   // Use BTreeMap / crossbeam channels
+SystemTime                  // Use std::time::Instant
+Mutex / RwLock              // Use atomics or lock-free structures
+allocate / deallocate       // Pre-allocate or use stack
+```
 
-- **Vision**: Scalable, component-based framework with real-time capability and robust telemetry streaming
-- **Core Principle**: Memory safety first (no C/C++ dependencies), real-time capable, modular design, cross-platform
-- **Architecture**: Component-based with 6 core modules owned by 3 developers
-- **Platform**: Desktop testing (Linux) + embedded hardware (STM32/ARM)
+**✅ Always:**
+```rust
+operation()?                // Error propagation
+let buf = [0u8; 256];      // Stack allocation
+let (tx, rx) = crossbeam::channel::bounded(N);  // Bounded channels
+std::sync::atomic::*        // Lock-free synchronization
+```
 
-## Module Ownership
+## Core Principles
 
-| Module | Owner | Purpose |
-|--------|-------|---------|
-| HAL & Scheduling | Dev 1 | Hardware abstraction, real-time task scheduling |
-| Navigation & Control | Dev 2 | Autonomous logic, actuator control |
-| Telemetry | Dev 3 | Data collection, remote transmission |
-| Common/Utils | All | Shared error types, logging, config |
+- **Safety**: Respect ownership. Use `&T`, `&mut T` appropriately.
+- **Errors**: All `Result`/`Option` use `?` operator. No `.unwrap()`.
+- **Hard Real-Time**: Zero allocations, GC, or unbounded operations in timing-critical sections.
+- **Deterministic**: Lock-free primitives only. No mutexes/RwLocks. Message-passing with bounded channels.
+- **Predictable Latency**: O(1) complexity, bounded worst-case execution time (WCET).
 
-## Code Generation Guidelines
+## Standards
 
-### Traits & Abstractions First
-- Define traits before implementations
-- Use trait objects (`dyn Trait`) in public APIs
-- Keep platform-specific code in isolated modules with `#[cfg(...)]` guards
-- Example trait pattern: `pub trait HardwareDriver: Send + Sync { ... }`
+- Code must pass `cargo check` on first generation without warnings
+- Exhaustive pattern matching; let compiler catch errors
+- Prefer iterator chains; zero-cost abstractions
+- Document unsafe with `// SAFETY:` comments and memory barriers
+- Public APIs return `Result<T, E>` with bounded execution time
+- Document timing constraints: `/// WCET: ≤ 100µs` for each function
 
-### Real-Time Annotations
-- Label timing-critical functions with doc comments: `/// Real-Time: 10ms deadline`
-- Use trait methods for context switches (avoid blocking operations in async code)
-- Document scheduling constraints at module level
+## Dependencies
 
-### Cross-Platform Development
-- Separate platform implementations: `src/hal/linux/`, `src/hal/stm32/`, `src/hal/generic/`
-- Use Cargo features for platform selection: `desktop`, `embedded`, `stm32h7`
-- Conditional compilation for platform-specific code
-- Test on desktop (Linux simulation) before targeting embedded hardware
+**Allowed:** `crossbeam`, `parking_lot` (parking_lot is faster but still blocking), atomics, `tokio` with timeout bounds, `heapless`, minimal pure-Rust crates  
+**Forbidden:** C/C++ FFI, unvetted unsafe, unbounded async, `Mutex`/`RwLock` in hard real-time paths, allocating crates
 
-### Error Handling
-- Centralize error types in `src/common/error.rs`
-- Implement `std::error::Error` for custom errors
-- Use `Result<T, CustomError>` pattern throughout
-- No unwraps in production code (document why if necessary with `// SAFETY: ...`)
+**Hard Real-Time Safe:** Use only `crossbeam::atomic`, `std::sync::atomic`, bounded channels. No thread::spawn without CPU pinning.
 
-### Module Communication
-- Dev 1 → Dev 2: HAL traits and scheduling interfaces
-- Dev 2 → Dev 3: State/sensor data via telemetry channels
-- Dev 3 ← All modules: Structured telemetry events
-- Use async channels (`tokio::sync::mpsc`) for data flow
+## Doc Template
 
-### Testing & Quality
-- Unit tests in `#[cfg(test)]` modules adjacent to implementation
-- Integration tests in `tests/` directory
-- Must pass: `cargo fmt --check`, `cargo clippy`, `cargo test`
-- Target 80%+ coverage for core modules
+```rust
+/// Operation description.
+/// # Real-Time Guarantees
+/// WCET: O(1), ≤ 100µs. Zero allocations.
+/// # Errors
+/// Returns `Err` if timeout or resource exhausted.
+pub fn operation() -> Result<T, E> { }
+```
 
-## Build & Development
+## Validate
 
-**Setup**: `cargo build`  
-**Test**: `cargo test`  
-**Format**: `cargo fmt`  
-**Lint**: `cargo clippy`  
+```bash
+cargo check              # Must pass, no warnings
+cargo fmt --check; cargo clippy
+RUST_BACKTRACE=1 cargo test
+# For hard real-time, measure and verify WCET with profiler
+```
 
-**Branch**: Commit to feature branches, PR to `oded`, then to `master`  
-**Dependencies**: Rust-native only, no C/C++ wrappers
+## Watch For
 
-## Integration Points
+- Lifetime mismatches, trait objects needing `'static`, recursive borrows
+- Hidden allocations: `.clone()`, `format!()`, method chaining, string operations
+- Unbounded recursion: use iteration in hot paths to avoid stack overflow
+- Context switches, page faults, memory fragmentation
+- Use profilers: `perf`, `flamegraph`, cycle counters for latency verification
 
-- **Remote Monitoring System**: Receives structured telemetry via MQTT/gRPC/custom binary
-- **Embedded Hardware**: HAL abstracts platform differences; currently targeting STM32/ARM
-- **Scheduling**: `tokio` for soft real-time (desktop), `rtic` for hard real-time (embedded)
+## Cross-Platform / Platform Independence
 
-## Documentation References
-
-- **Architecture details**: See `docs/ARCHITECTURE.md`
-- **Team roles & conventions**: See `docs/DEVELOPER_GUIDE.md`
-- **All doc comments must explain "why" not just "what"**
-
----
-
-**Last updated**: 27 November 2025  
-**For AI agents using this project**: Follow these patterns consistently. When uncertain about architecture, prioritize trait-based abstractions and cross-platform compatibility.
+- Use `std` abstractions (threads, channels, timers) for portability
+- Isolate platform-specific code with `#[cfg(target_os = "windows")]`, `#[cfg(target_os = "linux")]`, etc.
+- Prefer `std::time::Instant` over OS-specific timing APIs
+- Use `crossbeam` for cross-platform concurrency—works on all Tier-1 platforms
+- For CPU pinning/scheduling: use platform-specific `#[cfg]` blocks with fallback
+- Test on Linux, macOS, Windows; verify WCET determinism on each platform
