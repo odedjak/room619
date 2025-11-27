@@ -42,6 +42,9 @@ impl std::error::Error for TelemetryError {}
 /// Convenience type alias for telemetry operations.
 pub type TelemetryResult<T> = Result<T, TelemetryError>;
 
+/// Type alias for in-memory records: (topic, payload bytes)
+type TelemetryRecord = (String, Vec<u8>);
+
 // ============================================================================
 // Message type
 // ============================================================================
@@ -154,7 +157,7 @@ impl TelemetryClient {
 
 /// An in-memory sink useful for testing and local inspection.
 pub struct InMemorySink {
-    pub records: Arc<Mutex<Vec<(String, Vec<u8>)>>>,
+    pub records: Arc<Mutex<Vec<TelemetryRecord>>>,
 }
 
 impl InMemorySink {
@@ -168,7 +171,7 @@ impl InMemorySink {
     /// Get a cloneable `Arc` to the internal storage.
     ///
     /// Useful in tests to inspect recorded messages without ownership issues.
-    pub fn records_arc(&self) -> Arc<Mutex<Vec<(String, Vec<u8>)>>> {
+    pub fn records_arc(&self) -> Arc<Mutex<Vec<TelemetryRecord>>> {
         Arc::clone(&self.records)
     }
 }
