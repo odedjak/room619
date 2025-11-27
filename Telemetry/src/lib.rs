@@ -1,3 +1,9 @@
+//! Telemetry crate - thin template for the Telemetry Engineer
+//!
+//! This crate provides a small, testable telemetry abstraction suitable for
+//! the `room619` project. Implementations can use MQTT, gRPC, or a custom
+//! binary protocol behind the `TelemetrySink` trait.
+
 use serde::{Deserialize, Serialize};
 
 /// Basic telemetry message structure used for examples and tests.
@@ -23,7 +29,7 @@ impl TelemetryMessage {
 }
 
 #[cfg(test)]
-mod tests {
+mod message_tests {
     use super::*;
 
     #[test]
@@ -44,13 +50,6 @@ mod tests {
         let msg = TelemetryMessage::new("a/topic", payload);
         assert_eq!(msg.topic, "a/topic");
     }
-}
-//! Telemetry crate - thin template for the Telemetry Engineer
-//!
-//! This crate provides a small, testable telemetry abstraction suitable for
-//! the `room619` project. Implementations can use MQTT, gRPC, or a custom
-//! binary protocol behind the `TelemetrySink` trait.
-
 pub trait TelemetrySink {
     /// Send a telemetry payload to a named topic/channel.
     ///
@@ -72,7 +71,7 @@ impl TelemetrySink for MockSink {
 }
 
 #[cfg(test)]
-mod tests {
+mod sink_tests {
     use super::*;
 
     #[test]
