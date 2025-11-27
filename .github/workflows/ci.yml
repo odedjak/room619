@@ -43,6 +43,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
+<<<<<<< HEAD
   crate-discovery:
     name: Build & Test All Crates
     runs-on: ubuntu-latest
@@ -77,6 +78,17 @@ jobs:
       - name: Telemetry CI note
         run: |
           echo "Telemetry crate tests are included in the discovery step above."
+=======
+  test:
+    name: Test (Desktop Simulation)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --all-features --verbose
+      - run: cargo test --all-features --verbose --release
+>>>>>>> 576f577a29675fec9d6be24da638970822343cdd
 
   build:
     name: Cross-Platform Build
