@@ -1,11 +1,11 @@
 //! Scheduler implementations
-//! 
+//!
 //! Provides scheduling primitives for different platforms.
 
 use crate::platform::PlatformError;
 
 /// Task definition
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Task {
     pub id: u32,
     pub priority: u8,
@@ -26,9 +26,7 @@ pub struct DefaultScheduler {
 
 impl DefaultScheduler {
     pub fn new() -> Self {
-        DefaultScheduler {
-            tasks: Vec::new(),
-        }
+        DefaultScheduler { tasks: Vec::new() }
     }
 }
 
