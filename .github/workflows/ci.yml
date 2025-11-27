@@ -43,42 +43,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
-<<<<<<< HEAD
-  crate-discovery:
-    name: Build & Test All Crates
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust (stable)
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: clippy, rustfmt
-
-      - name: Discover and test crates
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Finding Cargo.toml files..."
-          crates=( $(git ls-files -- "*/Cargo.toml" | sed 's#/Cargo.toml##') )
-          if [ ${#crates[@]} -eq 0 ]; then
-            echo "No Rust crates found. Nothing to build."
-            exit 0
-          fi
-
-          for d in "${crates[@]}"; do
-            echo "--- Building and testing crate: $d ---"
-            (cd "$d" && echo "cargo build (all features) in $d" && cargo build --all-features --verbose)
-            (cd "$d" && echo "cargo test (all features) in $d" && cargo test --all-features --verbose)
-          done
-
-      - name: Telemetry CI note
-        run: |
-          echo "Telemetry crate tests are included in the discovery step above."
-=======
   test:
     name: Test (Desktop Simulation)
     runs-on: ubuntu-latest
@@ -88,7 +52,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --all-features --verbose
       - run: cargo test --all-features --verbose --release
->>>>>>> 576f577a29675fec9d6be24da638970822343cdd
 
   build:
     name: Cross-Platform Build
