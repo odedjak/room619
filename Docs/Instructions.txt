@@ -1,30 +1,3 @@
-Instructions for room619
-=======================
-
-Purpose
--------
-This small file provides a minimal set of instructions for working with the
-`room619` repository.
-
-Quick start
------------
-- Ensure you are on branch `amit`:
-  - `git checkout amit`
-- To build or run this project, follow repository-specific steps in other
-  files (this repo currently contains only a README).
-
-Editing & contributing
-----------------------
-- Create feature branches off `amit` and open pull requests to merge changes.
-- Keep commits focused and add clear commit messages.
-
-Contact
--------
-Repository owner: `odedjak` (GitHub)
-
-Notes
------
-- This is a minimal instructions file added at the request of the local user.
 Modular Real-Time Embedded Framework for Autonomous Systems
 Team Purpose & Vision
 Our team is focused on building a modular, scalable, and real-time embedded 
@@ -55,7 +28,6 @@ Team Roles
 • Embedded Developer – Implements low-level hardware interactions and realtime logic.
 • Telemetry Engineer – Develops the communication layer and ensures 
 compatibility with the remote system.
-
 • Integrator & Tester – Validates system performance and ensures modular 
 components work together seamlessly.
 Why Rust?
