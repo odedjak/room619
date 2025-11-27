@@ -1,0 +1,74 @@
+Instructions for room619
+=======================
+
+Purpose
+-------
+This small file provides a minimal set of instructions for working with the
+`room619` repository.
+
+Quick start
+-----------
+- Ensure you are on branch `amit`:
+  - `git checkout amit`
+- To build or run this project, follow repository-specific steps in other
+  files (this repo currently contains only a README).
+
+Editing & contributing
+----------------------
+- Create feature branches off `amit` and open pull requests to merge changes.
+- Keep commits focused and add clear commit messages.
+
+Contact
+-------
+Repository owner: `odedjak` (GitHub)
+
+Notes
+-----
+- This is a minimal instructions file added at the request of the local user.
+Modular Real-Time Embedded Framework for Autonomous Systems
+Team Purpose & Vision
+Our team is focused on building a modular, scalable, and real-time embedded 
+framework in Rust, specifically designed for autonomous systems. We aim to 
+challenge the traditional reliance on C/C++ in embedded development by leveraging 
+Rust’s safety, concurrency, and performance features to create a modern alternative.
+Key Objectives
+• Design a modular architecture that allows flexible integration of components 
+such as sensors, actuators, decision-making modules, and communication 
+interfaces.
+• Ensure real-time performance suitable for mission-critical autonomous 
+operations.
+• Implement robust telemetry streaming to a remote system developed by a 
+separate team, enabling monitoring, diagnostics, and data analysis.
+• Avoid legacy dependencies (no C/C++), embracing Rust-native solutions for 
+memory safety and concurrency.
+Core Features
+• Component-based design: Each module (e.g., navigation, control, telemetry) is 
+independently deployable and testable.
+• Real-time scheduling: Using Rust crates like tokio, rtic, or custom scheduling 
+logic to meet timing constraints.
+• Telemetry abstraction: A clean interface for sending structured data to remote 
+systems, supporting protocols like MQTT, gRPC, or custom binary formats.
+• Hardware abstraction layer (HAL): Rust-based HAL to interface with embedded 
+hardware without unsafe code.
+Team Roles
+• System Architect – Designs the modular structure and defines interfaces.
+• Embedded Developer – Implements low-level hardware interactions and realtime logic.
+• Telemetry Engineer – Develops the communication layer and ensures 
+compatibility with the remote system.
+
+• Integrator & Tester – Validates system performance and ensures modular 
+components work together seamlessly.
+Why Rust?
+• Memory safety without garbage collection
+• Zero-cost abstractions
+• Strong concurrency model
+• Growing ecosystem for embedded development
+Hackathon Goals
+By the end of the hackathon, we aim to deliver:
+• A working prototype of the framework running on embedded hardware or 
+simulation.
+• A demo showing real-time telemetry being sent to the remote system.
+• Documentation outlining the architecture and integration points.
+Note
+The system should be able to run cross platform on a desktop environment for testing 
+purposes.
