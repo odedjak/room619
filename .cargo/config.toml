@@ -1,0 +1,18 @@
+[build]
+# Show code size for embedded targets
+rustflags = [
+    "-C", "opt-level=3",
+    "-C", "lto=fat",
+    "-C", "codegen-units=1",
+]
+
+[alias]
+# Quick commands for common tasks
+check-all = "check --all-targets --all-features"
+test-all = "test --all-features --verbose"
+bench-all = "bench --all-features"
+fmt-check = "fmt --all -- --check"
+lint = "clippy --all-targets --all-features -- -D warnings"
+
+# Real-time validation
+rtcheck = """run --manifest-path tools/rtcheck/Cargo.toml --release"""
