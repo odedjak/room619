@@ -110,14 +110,12 @@ pub trait TelemetrySink: Send + Sync {
 pub struct MockSink;
 
 impl TelemetrySink for MockSink {
-    fn send(&self, topic: &str, payload: &[u8]) -> TelemetryResult<()> {
+    fn send(&self, topic: &str, _payload: &[u8]) -> TelemetryResult<()> {
         // For testing: print to stdout so developers can see what was sent.
-        println!("MockSink sending to '{}': {:?}", topic, payload);
+        println!("MockSink sending to '{}': {:?}", topic, _payload);
         Ok(())
     }
 }
-
-use std::sync::{Arc, Mutex};
 
 /// A client that sends structured `TelemetryMessage` instances through a
 /// `TelemetrySink`. This separates message construction from the transport.
@@ -280,7 +278,7 @@ pub mod mqtt {
     //! binary size and avoids pulling in heavy dependencies.
     //! Enable with `features = ["mqtt"]` in Cargo.toml.
 
-    use super::{TelemetrySink, TelemetryResult, TelemetryError};
+    use super::{TelemetrySink, TelemetryResult};
 
     /// MQTT sink stub. A real implementation would:
     /// - Connect to an MQTT broker (mosquitto, AWS IoT, etc.)
@@ -299,7 +297,7 @@ pub mod mqtt {
     }
 
     impl TelemetrySink for MqttSink {
-        fn send(&self, topic: &str, payload: &[u8]) -> TelemetryResult<()> {
+        fn send(&self, topic: &str, _payload: &[u8]) -> TelemetryResult<()> {
             // TODO: Implement MQTT publish
             // For now, this is a stub that logs intent.
             log::debug!("MQTT: would publish to {} @ {}", topic, self.broker_url);
@@ -315,7 +313,7 @@ pub mod grpc {
     //! **Why feature-gated?** gRPC adds protobuf/networking complexity;
     //! only enable if your deployment uses gRPC for telemetry.
 
-    use super::{TelemetrySink, TelemetryResult, TelemetryError};
+    use super::{TelemetrySink, TelemetryResult};
 
     /// gRPC sink stub. A real implementation would:
     /// - Connect to a gRPC service
@@ -334,7 +332,7 @@ pub mod grpc {
     }
 
     impl TelemetrySink for GrpcSink {
-        fn send(&self, topic: &str, payload: &[u8]) -> TelemetryResult<()> {
+        fn send(&self, topic: &str, _payload: &[u8]) -> TelemetryResult<()> {
             // TODO: Implement gRPC send
             // For now, this is a stub that logs intent.
             log::debug!("gRPC: would send to {} @ {}", topic, self.endpoint);
