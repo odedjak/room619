@@ -50,6 +50,7 @@ mod message_tests {
         let msg = TelemetryMessage::new("a/topic", payload);
         assert_eq!(msg.topic, "a/topic");
     }
+}
 pub trait TelemetrySink {
     /// Send a telemetry payload to a named topic/channel.
     ///
